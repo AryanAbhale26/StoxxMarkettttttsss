@@ -79,6 +79,8 @@ class StockMovementResponse(BaseModel):
     partner_name: Optional[str] = None
     source_location_id: Optional[str] = None
     destination_location_id: Optional[str] = None
+    source_location_name: Optional[str] = None
+    dest_location_name: Optional[str] = None
     lines: List[StockMovementLine]
     scheduled_date: Optional[datetime] = None
     notes: Optional[str] = None

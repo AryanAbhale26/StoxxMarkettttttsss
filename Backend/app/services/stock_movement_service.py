@@ -52,7 +52,7 @@ class StockMovementService:
         result = await self.db.stock_movements.insert_one(movement_dict)
         movement_dict["_id"] = result.inserted_id
         
-        return self._to_response(movement_dict)
+        return await self._to_response(movement_dict)
     
     async def get_movement_by_id(self, movement_id: str, user_email: str) -> Optional[StockMovementResponse]:
         """Get movement by ID"""
@@ -68,7 +68,7 @@ class StockMovementService:
         if not movement:
             return None
         
-        return self._to_response(movement)
+        return await self._to_response(movement)
     
     async def get_all_movements(
         self,
@@ -90,7 +90,12 @@ class StockMovementService:
         cursor = self.db.stock_movements.find(query).skip(skip).limit(limit).sort("created_at", -1)
         movements = await cursor.to_list(length=limit)
         
-        return [self._to_response(m) for m in movements]
+        # Use async comprehension to handle location lookups
+        results = []
+        for m in movements:
+            result = await self._to_response(m)
+            results.append(result)
+        return results
     
     async def update_movement(self, movement_id: str, movement_data: StockMovementUpdate, user_email: str) -> Optional[StockMovementResponse]:
         """Update a movement"""
@@ -367,16 +372,35 @@ class StockMovementService:
             results.append(result)
         return results
     
-    def _to_response(self, movement: dict) -> StockMovementResponse:
+    async def _to_response(self, movement: dict) -> StockMovementResponse:
         """Convert database document to response model"""
+        # Fetch location names if location IDs exist
+        source_location_name = None
+        dest_location_name = None
+        
+        source_location_id = movement.get("source_location_id")
+        destination_location_id = movement.get("destination_location_id")
+        
+        if source_location_id and ObjectId.is_valid(source_location_id):
+            source_location = await self.db.locations.find_one({"_id": ObjectId(source_location_id)})
+            if source_location:
+                source_location_name = source_location.get("name")
+        
+        if destination_location_id and ObjectId.is_valid(destination_location_id):
+            dest_location = await self.db.locations.find_one({"_id": ObjectId(destination_location_id)})
+            if dest_location:
+                dest_location_name = dest_location.get("name")
+        
         return StockMovementResponse(
             id=str(movement["_id"]),
             type=movement["type"],
             status=movement["status"],
             reference=movement["reference"],
             partner_name=movement.get("partner_name"),
-            source_location_id=movement.get("source_location_id"),
-            destination_location_id=movement.get("destination_location_id"),
+            source_location_id=source_location_id,
+            destination_location_id=destination_location_id,
+            source_location_name=source_location_name,
+            dest_location_name=dest_location_name,
             lines=movement["lines"],
             scheduled_date=movement.get("scheduled_date"),
             notes=movement.get("notes"),
