@@ -37,6 +37,12 @@ export const API_ENDPOINTS = {
     allLocations: `${API_BASE_URL}/warehouses/locations/all`,
     warehouseLocations: (id: string) => `${API_BASE_URL}/warehouses/${id}/locations`,
   },
+  locationStock: {
+    productStock: (id: string) => `${API_BASE_URL}/location-stock/products/${id}`,
+    allProducts: `${API_BASE_URL}/location-stock/products`,
+    locationSummary: (id: string) => `${API_BASE_URL}/location-stock/locations/${id}`,
+    allLocations: `${API_BASE_URL}/location-stock/locations`,
+  },
 };
 
 export default API_BASE_URL;

@@ -7,5 +7,5 @@ router = APIRouter()
 @router.get("/kpis", response_model=DashboardKPIs)
 async def get_dashboard_kpis(current_user: dict = Depends(get_current_user)):
     """Get dashboard KPIs"""
-    kpis = await dashboard_service.get_dashboard_kpis()
+    kpis = await dashboard_service.get_dashboard_kpis(current_user["email"])
     return kpis

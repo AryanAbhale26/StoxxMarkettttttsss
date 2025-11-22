@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { stockMovementService, StockMovementCreate, StockMovementLine } from '../services/stockMovementService';
 import { productService, Product } from '../services/productService';
+import { warehouseService, Location } from '../services/warehouseService';
 import Layout from '../components/Layout';
 import toast from 'react-hot-toast';
 import { Save, Plus, Trash2 } from 'lucide-react';
@@ -9,11 +10,14 @@ import { Save, Plus, Trash2 } from 'lucide-react';
 const DeliveryForm = () => {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(false);
+  const [checkingPrerequisites, setCheckingPrerequisites] = useState(true);
   
   const [formData, setFormData] = useState({
     reference: `DEL-${Date.now()}`,
     partner_name: '',
+    source_location_id: '',
     scheduled_date: new Date().toISOString().split('T')[0],
     notes: '',
     status: 'draft' as 'draft' | 'waiting' | 'ready',
@@ -22,15 +26,29 @@ const DeliveryForm = () => {
   const [lines, setLines] = useState<StockMovementLine[]>([]);
 
   useEffect(() => {
-    loadProducts();
+    checkPrerequisites();
   }, []);
 
-  const loadProducts = async () => {
+  const checkPrerequisites = async () => {
     try {
-      const data = await productService.getAll();
-      setProducts(data);
+      const [productsData, locationsData] = await Promise.all([
+        productService.getAll(),
+        warehouseService.getAllLocations(),
+      ]);
+
+      if (locationsData.length === 0) {
+        toast.error('Please create warehouse and locations first before creating deliveries');
+        navigate('/warehouses');
+        return;
+      }
+
+      setProducts(productsData);
+      setLocations(locationsData);
     } catch (error) {
-      toast.error('Failed to load products');
+      toast.error('Failed to load data');
+      navigate('/deliveries');
+    } finally {
+      setCheckingPrerequisites(false);
     }
   };
 
@@ -93,6 +111,8 @@ const DeliveryForm = () => {
         type: 'delivery',
         status: formData.status,
         reference: formData.reference,
+        partner_name: formData.partner_name || undefined,
+        source_location_id: formData.source_location_id || undefined,
         lines: lines,
         scheduled_date: formData.scheduled_date,
         notes: formData.notes,
@@ -107,6 +127,19 @@ const DeliveryForm = () => {
       setLoading(false);
     }
   };
+
+  if (checkingPrerequisites) {
+    return (
+      <Layout>
+        <div className="p-8">
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <p className="mt-4 text-gray-600">Checking prerequisites...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -143,6 +176,25 @@ const DeliveryForm = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Customer name"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Source Location *
+                  </label>
+                  <select
+                    required
+                    value={formData.source_location_id}
+                    onChange={(e) => setFormData({ ...formData, source_location_id: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select location</option>
+                    {locations.map((location) => (
+                      <option key={location.id} value={location.id}>
+                        {location.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>

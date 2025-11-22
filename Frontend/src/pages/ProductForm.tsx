@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { productService, ProductCreate, ProductUpdate } from '../services/productService';
+import { warehouseService, Warehouse, Location } from '../services/warehouseService';
 import Layout from '../components/Layout';
 import toast from 'react-hot-toast';
 import { Save, Loader2 } from 'lucide-react';
@@ -11,6 +12,9 @@ const ProductForm = () => {
   const isEdit = !!id;
 
   const [loading, setLoading] = useState(false);
+  const [checkingPrerequisites, setCheckingPrerequisites] = useState(true);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     sku: '',
@@ -19,13 +23,63 @@ const ProductForm = () => {
     description: '',
     reorder_level: 10,
     initial_stock: 0,
+    warehouse_id: '',
+    location_id: '',
   });
 
   useEffect(() => {
-    if (isEdit && id) {
+    checkPrerequisites();
+  }, []);
+
+  useEffect(() => {
+    if (isEdit && id && !checkingPrerequisites) {
       loadProduct(id);
     }
-  }, [id, isEdit]);
+  }, [id, isEdit, checkingPrerequisites]);
+
+  useEffect(() => {
+    if (formData.warehouse_id) {
+      loadLocations();
+    }
+  }, [formData.warehouse_id]);
+
+  const checkPrerequisites = async () => {
+    try {
+      const [warehousesData, locationsData] = await Promise.all([
+        warehouseService.getAll(),
+        warehouseService.getAllLocations(),
+      ]);
+
+      if (warehousesData.length === 0) {
+        toast.error('Please create a warehouse first before adding products');
+        navigate('/warehouses');
+        return;
+      }
+
+      if (locationsData.length === 0) {
+        toast.error('Please create at least one location before adding products');
+        navigate('/warehouses');
+        return;
+      }
+
+      setWarehouses(warehousesData);
+      setLocations(locationsData);
+    } catch (error) {
+      toast.error('Failed to check prerequisites');
+      navigate('/products');
+    } finally {
+      setCheckingPrerequisites(false);
+    }
+  };
+
+  const loadLocations = async () => {
+    try {
+      const locationsData = await warehouseService.getAllLocations();
+      setLocations(locationsData);
+    } catch (error) {
+      toast.error('Failed to load locations');
+    }
+  };
 
   const loadProduct = async (productId: string) => {
     try {
@@ -38,6 +92,8 @@ const ProductForm = () => {
         description: product.description || '',
         reorder_level: product.reorder_level,
         initial_stock: product.current_stock,
+        warehouse_id: '',
+        location_id: '',
       });
     } catch (error) {
       toast.error('Failed to load product');
@@ -55,6 +111,14 @@ const ProductForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isEdit) {
+      if (!formData.warehouse_id || !formData.location_id) {
+        toast.error('Please select warehouse and location');
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -78,6 +142,8 @@ const ProductForm = () => {
           description: formData.description,
           reorder_level: formData.reorder_level,
           initial_stock: formData.initial_stock,
+          warehouse_id: formData.warehouse_id || undefined,
+          location_id: formData.location_id || undefined,
         };
         await productService.create(createData);
         toast.success('Product created successfully');
@@ -90,6 +156,19 @@ const ProductForm = () => {
       setLoading(false);
     }
   };
+
+  if (checkingPrerequisites) {
+    return (
+      <Layout>
+        <div className="p-8">
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <p className="mt-4 text-gray-600">Checking prerequisites...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -180,19 +259,62 @@ const ProductForm = () => {
                 </div>
 
                 {!isEdit && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Initial Stock
-                    </label>
-                    <input
-                      type="number"
-                      name="initial_stock"
-                      min="0"
-                      value={formData.initial_stock}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Warehouse *
+                      </label>
+                      <select
+                        name="warehouse_id"
+                        required
+                        value={formData.warehouse_id}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Select warehouse</option>
+                        {warehouses.map((warehouse) => (
+                          <option key={warehouse.id} value={warehouse.id}>
+                            {warehouse.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Location *
+                      </label>
+                      <select
+                        name="location_id"
+                        required
+                        value={formData.location_id}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        disabled={!formData.warehouse_id}
+                      >
+                        <option value="">Select location</option>
+                        {locations.map((location) => (
+                          <option key={location.id} value={location.id}>
+                            {location.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Initial Stock
+                      </label>
+                      <input
+                        type="number"
+                        name="initial_stock"
+                        min="0"
+                        value={formData.initial_stock}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </>
                 )}
               </div>
 

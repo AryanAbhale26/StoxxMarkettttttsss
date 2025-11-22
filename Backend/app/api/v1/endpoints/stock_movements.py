@@ -39,7 +39,9 @@ async def get_movements(
 ):
     """Get all stock movements with optional filtering"""
     try:
-        movements = await stock_movement_service.get_all_movements(skip, limit, movement_type, status)
+        movements = await stock_movement_service.get_all_movements(
+            current_user["email"], skip, limit, movement_type, status
+        )
         return movements
     except Exception as e:
         raise HTTPException(
@@ -53,7 +55,7 @@ async def get_movement(
     current_user: dict = Depends(get_current_user)
 ):
     """Get movement by ID"""
-    movement = await stock_movement_service.get_movement_by_id(movement_id)
+    movement = await stock_movement_service.get_movement_by_id(movement_id, current_user["email"])
     if not movement:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -68,7 +70,9 @@ async def update_movement(
     current_user: dict = Depends(get_current_user)
 ):
     """Update a movement"""
-    movement = await stock_movement_service.update_movement(movement_id, movement_data)
+    movement = await stock_movement_service.update_movement(
+        movement_id, movement_data, current_user["email"]
+    )
     if not movement:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -83,7 +87,7 @@ async def execute_movement(
 ):
     """Execute a movement (mark as done and update stock levels)"""
     try:
-        movement = await stock_movement_service.execute_movement(movement_id)
+        movement = await stock_movement_service.execute_movement(movement_id, current_user["email"])
         return movement
     except HTTPException as e:
         raise e
@@ -120,7 +124,9 @@ async def get_stock_ledger(
 ):
     """Get stock ledger history"""
     try:
-        entries = await stock_movement_service.get_stock_ledger(skip, limit, product_id, movement_type)
+        entries = await stock_movement_service.get_stock_ledger(
+            current_user["email"], skip, limit, product_id, movement_type
+        )
         return entries
     except Exception as e:
         raise HTTPException(

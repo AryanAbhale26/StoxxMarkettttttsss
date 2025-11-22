@@ -32,9 +32,16 @@ export interface StockMovementCreate {
   type: 'receipt' | 'delivery' | 'internal';
   status?: 'draft' | 'waiting' | 'ready';
   reference: string;
+  partner_name?: string;
   source_location_id?: string;
   destination_location_id?: string;
   lines: StockMovementLine[];
+  scheduled_date?: string;
+  notes?: string;
+}
+
+export interface StockMovementUpdate {
+  status?: 'draft' | 'waiting' | 'ready' | 'canceled';
   scheduled_date?: string;
   notes?: string;
 }
@@ -83,6 +90,11 @@ export const stockMovementService = {
 
   create: async (data: StockMovementCreate): Promise<StockMovement> => {
     const response = await apiClient.post(API_ENDPOINTS.stockMovements.create, data);
+    return response.data;
+  },
+
+  update: async (id: string, data: StockMovementUpdate): Promise<StockMovement> => {
+    const response = await apiClient.put(API_ENDPOINTS.stockMovements.get(id), data);
     return response.data;
   },
 

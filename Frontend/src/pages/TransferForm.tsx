@@ -12,6 +12,7 @@ const TransferForm = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(false);
+  const [checkingPrerequisites, setCheckingPrerequisites] = useState(true);
   
   const [formData, setFormData] = useState({
     reference: `TRF-${Date.now()}`,
@@ -25,19 +26,35 @@ const TransferForm = () => {
   const [lines, setLines] = useState<StockMovementLine[]>([]);
 
   useEffect(() => {
-    loadData();
+    checkPrerequisites();
   }, []);
 
-  const loadData = async () => {
+  const checkPrerequisites = async () => {
     try {
       const [productsData, locationsData] = await Promise.all([
         productService.getAll(),
         warehouseService.getAllLocations(),
       ]);
+
+      if (locationsData.length === 0) {
+        toast.error('Please create warehouse and locations first before creating transfers');
+        navigate('/warehouses');
+        return;
+      }
+
+      if (locationsData.length < 2) {
+        toast.error('Please create at least two locations for transfers');
+        navigate('/warehouses');
+        return;
+      }
+
       setProducts(productsData);
       setLocations(locationsData);
     } catch (error) {
       toast.error('Failed to load data');
+      navigate('/transfers');
+    } finally {
+      setCheckingPrerequisites(false);
     }
   };
 
@@ -126,6 +143,19 @@ const TransferForm = () => {
       setLoading(false);
     }
   };
+
+  if (checkingPrerequisites) {
+    return (
+      <Layout>
+        <div className="p-8">
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <p className="mt-4 text-gray-600">Checking prerequisites...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

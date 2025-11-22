@@ -32,6 +32,7 @@ class AuthService:
             "email": user_data.email,
             "full_name": user_data.full_name,
             "hashed_password": get_password_hash(user_data.password),
+            "organization_id": None,  # Will be set after creating organization
             "is_active": True,
             "is_verified": True,  # Set to True for now, can enable email verification later
             "created_at": datetime.utcnow(),
@@ -41,6 +42,32 @@ class AuthService:
         # Insert user
         result = await self.db.users.insert_one(user_dict)
         user_dict["_id"] = result.inserted_id
+        user_id = str(result.inserted_id)
+        
+        # Create default organization for the user
+        org_dict = {
+            "name": f"{user_data.full_name}'s Organization",
+            "description": "Default organization",
+            "owner_id": user_id,
+            "members": [{
+                "user_id": user_id,
+                "user_email": user_data.email,
+                "user_name": user_data.full_name,
+                "role": "owner",
+                "joined_at": datetime.utcnow()
+            }],
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        
+        org_result = await self.db.organizations.insert_one(org_dict)
+        org_id = str(org_result.inserted_id)
+        
+        # Update user with organization_id
+        await self.db.users.update_one(
+            {"_id": result.inserted_id},
+            {"$set": {"organization_id": org_id}}
+        )
         
         # Send welcome email
         try:
@@ -49,7 +76,7 @@ class AuthService:
             print(f"Failed to send welcome email: {e}")
         
         return UserResponse(
-            id=str(result.inserted_id),
+            id=user_id,
             email=user_dict["email"],
             full_name=user_dict["full_name"],
             is_active=user_dict["is_active"],

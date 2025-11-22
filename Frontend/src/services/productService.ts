@@ -23,6 +23,8 @@ export interface ProductCreate {
   description?: string;
   reorder_level: number;
   initial_stock?: number;
+  warehouse_id?: string;
+  location_id?: string;
 }
 
 export interface ProductUpdate {

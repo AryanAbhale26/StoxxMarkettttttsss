@@ -18,52 +18,43 @@ class PyObjectId(ObjectId):
     def __get_pydantic_json_schema__(cls, field_schema):
         field_schema.update(type="string")
 
-class ProductBase(BaseModel):
+class OrganizationMember(BaseModel):
+    user_id: str
+    user_email: str
+    user_name: str
+    role: str = "member"  # owner, admin, member
+    joined_at: datetime = Field(default_factory=datetime.utcnow)
+
+class OrganizationBase(BaseModel):
     name: str
-    sku: str
-    category: str
-    unit_of_measure: str = "Units"
     description: Optional[str] = None
-    reorder_level: int = 10
-    initial_stock: Optional[int] = 0
 
-class ProductCreate(ProductBase):
-    warehouse_id: Optional[str] = None
-    location_id: Optional[str] = None
+class OrganizationCreate(OrganizationBase):
+    pass
 
-class ProductUpdate(BaseModel):
-    name: Optional[str] = None
-    sku: Optional[str] = None
-    category: Optional[str] = None
-    unit_of_measure: Optional[str] = None
-    description: Optional[str] = None
-    reorder_level: Optional[int] = None
-
-class ProductInDB(ProductBase):
+class OrganizationInDB(OrganizationBase):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
-    current_stock: int = 0
-    organization_id: str  # Multi-tenant support
+    owner_id: str  # User who created the organization
+    members: List[OrganizationMember] = []
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    created_by: str
 
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
 
-class ProductResponse(BaseModel):
+class OrganizationResponse(BaseModel):
     id: str
     name: str
-    sku: str
-    category: str
-    unit_of_measure: str
     description: Optional[str] = None
-    current_stock: int
-    reorder_level: int
+    owner_id: str
+    members: List[OrganizationMember]
     created_at: datetime
-    updated_at: datetime
-    is_low_stock: bool = False
 
-    class Config:
-        from_attributes = True
+class AddMemberRequest(BaseModel):
+    email: str
+    role: str = "member"  # member, admin
+
+class UpdateMemberRoleRequest(BaseModel):
+    role: str  # member, admin

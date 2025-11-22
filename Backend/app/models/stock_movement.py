@@ -43,6 +43,7 @@ class StockMovementBase(BaseModel):
     type: MovementType
     status: MovementStatus = MovementStatus.DRAFT
     reference: str
+    partner_name: Optional[str] = None
     source_location_id: Optional[str] = None
     destination_location_id: Optional[str] = None
     scheduled_date: Optional[datetime] = None
@@ -59,6 +60,7 @@ class StockMovementUpdate(BaseModel):
 class StockMovementInDB(StockMovementBase):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     lines: List[StockMovementLine]
+    organization_id: str  # Multi-tenant support
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     created_by: str
@@ -74,6 +76,7 @@ class StockMovementResponse(BaseModel):
     type: str
     status: str
     reference: str
+    partner_name: Optional[str] = None
     source_location_id: Optional[str] = None
     destination_location_id: Optional[str] = None
     lines: List[StockMovementLine]

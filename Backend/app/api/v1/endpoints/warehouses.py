@@ -18,7 +18,7 @@ async def create_warehouse(
 ):
     """Create a new warehouse"""
     try:
-        warehouse = await warehouse_service.create_warehouse(warehouse_data)
+        warehouse = await warehouse_service.create_warehouse(warehouse_data, current_user["email"])
         return warehouse
     except HTTPException as e:
         raise e
@@ -35,7 +35,7 @@ async def get_warehouses(
 ):
     """Get all warehouses"""
     try:
-        warehouses = await warehouse_service.get_all_warehouses(active_only)
+        warehouses = await warehouse_service.get_all_warehouses(current_user["email"], active_only)
         return warehouses
     except Exception as e:
         raise HTTPException(
@@ -49,7 +49,7 @@ async def get_warehouse(
     current_user: dict = Depends(get_current_user)
 ):
     """Get warehouse by ID"""
-    warehouse = await warehouse_service.get_warehouse_by_id(warehouse_id)
+    warehouse = await warehouse_service.get_warehouse_by_id(warehouse_id, current_user["email"])
     if not warehouse:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -64,7 +64,7 @@ async def create_location(
 ):
     """Create a new location"""
     try:
-        location = await warehouse_service.create_location(location_data)
+        location = await warehouse_service.create_location(location_data, current_user["email"])
         return location
     except Exception as e:
         raise HTTPException(
@@ -76,7 +76,7 @@ async def create_location(
 async def get_all_locations(current_user: dict = Depends(get_current_user)):
     """Get all locations"""
     try:
-        locations = await warehouse_service.get_all_locations()
+        locations = await warehouse_service.get_all_locations(current_user["email"])
         return locations
     except Exception as e:
         raise HTTPException(
@@ -91,7 +91,7 @@ async def get_warehouse_locations(
 ):
     """Get all locations for a warehouse"""
     try:
-        locations = await warehouse_service.get_locations_by_warehouse(warehouse_id)
+        locations = await warehouse_service.get_locations_by_warehouse(warehouse_id, current_user["email"])
         return locations
     except Exception as e:
         raise HTTPException(

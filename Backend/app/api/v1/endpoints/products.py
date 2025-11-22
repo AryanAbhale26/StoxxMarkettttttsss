@@ -32,7 +32,7 @@ async def get_products(
 ):
     """Get all products"""
     try:
-        products = await product_service.get_all_products(skip, limit, category)
+        products = await product_service.get_all_products(current_user["email"], skip, limit, category)
         return products
     except Exception as e:
         raise HTTPException(
@@ -47,7 +47,7 @@ async def search_products(
 ):
     """Search products by name or SKU"""
     try:
-        products = await product_service.search_products(q)
+        products = await product_service.search_products(q, current_user["email"])
         return products
     except Exception as e:
         raise HTTPException(
@@ -59,7 +59,7 @@ async def search_products(
 async def get_low_stock_products(current_user: dict = Depends(get_current_user)):
     """Get products with low stock"""
     try:
-        products = await product_service.get_low_stock_products()
+        products = await product_service.get_low_stock_products(current_user["email"])
         return products
     except Exception as e:
         raise HTTPException(
@@ -73,7 +73,7 @@ async def get_product(
     current_user: dict = Depends(get_current_user)
 ):
     """Get product by ID"""
-    product = await product_service.get_product_by_id(product_id)
+    product = await product_service.get_product_by_id(product_id, current_user["email"])
     if not product:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -88,7 +88,7 @@ async def update_product(
     current_user: dict = Depends(get_current_user)
 ):
     """Update a product"""
-    product = await product_service.update_product(product_id, product_data)
+    product = await product_service.update_product(product_id, product_data, current_user["email"])
     if not product:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -102,7 +102,7 @@ async def delete_product(
     current_user: dict = Depends(get_current_user)
 ):
     """Delete a product"""
-    deleted = await product_service.delete_product(product_id)
+    deleted = await product_service.delete_product(product_id, current_user["email"])
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

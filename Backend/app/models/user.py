@@ -41,6 +41,7 @@ class UserLogin(BaseModel):
 class UserInDB(UserBase):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     hashed_password: str
+    organization_id: Optional[str] = None  # References organization they belong to
     is_active: bool = True
     is_verified: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)

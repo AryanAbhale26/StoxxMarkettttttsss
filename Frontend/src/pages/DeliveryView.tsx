@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { stockMovementService, StockMovement } from '../services/stockMovementService';
+import { warehouseService } from '../services/warehouseService';
 import Layout from '../components/Layout';
 import toast from 'react-hot-toast';
 import { ArrowLeft, Package, CheckCircle, Clock, XCircle } from 'lucide-react';
@@ -9,6 +10,7 @@ const DeliveryView = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [delivery, setDelivery] = useState<StockMovement | null>(null);
+  const [sourceLocationName, setSourceLocationName] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,6 +25,17 @@ const DeliveryView = () => {
     try {
       const data = await stockMovementService.getById(id);
       setDelivery(data);
+      
+      // Load location name if available
+      if (data.source_location_id) {
+        try {
+          const locations = await warehouseService.getAllLocations();
+          const sourceLoc = locations.find(l => l.id === data.source_location_id);
+          if (sourceLoc) setSourceLocationName(sourceLoc.name);
+        } catch (error) {
+          // Ignore location fetch errors
+        }
+      }
     } catch (error) {
       toast.error('Failed to load delivery');
       navigate('/deliveries');
@@ -42,6 +55,29 @@ const DeliveryView = () => {
       loadDelivery();
     } catch (error) {
       toast.error('Failed to execute delivery');
+    }
+  };
+
+  const handleStatusChange = async (newStatus: 'draft' | 'waiting' | 'ready' | 'canceled') => {
+    if (!id) return;
+
+    const confirmMessages: any = {
+      ready: 'Mark this delivery as ready?',
+      waiting: 'Mark this delivery as waiting?',
+      canceled: 'Cancel this delivery? This action cannot be undone.',
+      draft: 'Change this delivery back to draft?',
+    };
+
+    if (!confirm(confirmMessages[newStatus])) {
+      return;
+    }
+
+    try {
+      await stockMovementService.update(id, { status: newStatus });
+      toast.success(`Delivery status changed to ${newStatus}`);
+      loadDelivery();
+    } catch (error) {
+      toast.error('Failed to update delivery status');
     }
   };
 
@@ -114,13 +150,45 @@ const DeliveryView = () => {
                 <p className="text-gray-600 mt-1">Outgoing Stock Movement</p>
               </div>
             </div>
-            <div>
+            <div className="flex gap-2">
+              {delivery.status === 'draft' && (
+                <>
+                  <button
+                    onClick={() => handleStatusChange('waiting')}
+                    className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
+                  >
+                    Mark as Waiting
+                  </button>
+                  <button
+                    onClick={() => handleStatusChange('ready')}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Mark as Ready
+                  </button>
+                </>
+              )}
+              {delivery.status === 'waiting' && (
+                <button
+                  onClick={() => handleStatusChange('ready')}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Mark as Ready
+                </button>
+              )}
               {delivery.status === 'ready' && (
                 <button
                   onClick={handleExecute}
                   className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700"
                 >
                   Execute Delivery
+                </button>
+              )}
+              {(delivery.status === 'draft' || delivery.status === 'waiting' || delivery.status === 'ready') && (
+                <button
+                  onClick={() => handleStatusChange('canceled')}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                >
+                  Cancel
                 </button>
               )}
             </div>
@@ -153,6 +221,10 @@ const DeliveryView = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">Partner</label>
                 <p className="text-gray-900">{delivery.partner_name || 'N/A'}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">Source Location</label>
+                <p className="text-gray-900">{sourceLocationName || 'N/A'}</p>
               </div>
               {delivery.executed_at && (
                 <div>

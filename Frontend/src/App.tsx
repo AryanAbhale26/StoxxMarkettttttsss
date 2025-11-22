@@ -19,6 +19,8 @@ import TransferView from './pages/TransferView'
 import Adjustments from './pages/Adjustments'
 import History from './pages/History'
 import Warehouses from './pages/Warehouses'
+import LocationStockView from './pages/LocationStockView'
+import LocationInventory from './pages/LocationInventory'
 import PrivateRoute from './components/PrivateRoute'
 
 function App() {
@@ -163,6 +165,24 @@ function App() {
             element={
               <PrivateRoute>
                 <Warehouses />
+              </PrivateRoute>
+            }
+          />
+          
+          <Route
+            path="/location-stock"
+            element={
+              <PrivateRoute>
+                <LocationStockView />
+              </PrivateRoute>
+            }
+          />
+          
+          <Route
+            path="/location-inventory"
+            element={
+              <PrivateRoute>
+                <LocationInventory />
               </PrivateRoute>
             }
           />

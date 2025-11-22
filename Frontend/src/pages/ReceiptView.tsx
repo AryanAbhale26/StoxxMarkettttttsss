@@ -45,6 +45,29 @@ const ReceiptView = () => {
     }
   };
 
+  const handleStatusChange = async (newStatus: 'draft' | 'waiting' | 'ready' | 'canceled') => {
+    if (!id) return;
+
+    const confirmMessages: any = {
+      ready: 'Mark this receipt as ready?',
+      waiting: 'Mark this receipt as waiting?',
+      canceled: 'Cancel this receipt? This action cannot be undone.',
+      draft: 'Change this receipt back to draft?',
+    };
+
+    if (!confirm(confirmMessages[newStatus])) {
+      return;
+    }
+
+    try {
+      await stockMovementService.update(id, { status: newStatus });
+      toast.success(`Receipt status changed to ${newStatus}`);
+      loadReceipt();
+    } catch (error) {
+      toast.error('Failed to update receipt status');
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const styles: any = {
       draft: 'bg-gray-100 text-gray-800',
@@ -114,13 +137,45 @@ const ReceiptView = () => {
                 <p className="text-gray-600 mt-1">Incoming Stock Movement</p>
               </div>
             </div>
-            <div>
+            <div className="flex gap-2">
+              {receipt.status === 'draft' && (
+                <>
+                  <button
+                    onClick={() => handleStatusChange('waiting')}
+                    className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
+                  >
+                    Mark as Waiting
+                  </button>
+                  <button
+                    onClick={() => handleStatusChange('ready')}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Mark as Ready
+                  </button>
+                </>
+              )}
+              {receipt.status === 'waiting' && (
+                <button
+                  onClick={() => handleStatusChange('ready')}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Mark as Ready
+                </button>
+              )}
               {receipt.status === 'ready' && (
                 <button
                   onClick={handleExecute}
                   className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700"
                 >
                   Execute Receipt
+                </button>
+              )}
+              {(receipt.status === 'draft' || receipt.status === 'waiting' || receipt.status === 'ready') && (
+                <button
+                  onClick={() => handleStatusChange('canceled')}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                >
+                  Cancel
                 </button>
               )}
             </div>

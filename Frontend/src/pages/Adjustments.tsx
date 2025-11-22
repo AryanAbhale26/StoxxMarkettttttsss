@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { stockMovementService } from '../services/stockMovementService';
 import { productService, Product } from '../services/productService';
+import { warehouseService, Location } from '../services/warehouseService';
+import { locationStockService } from '../services/locationStockService';
 import Layout from '../components/Layout';
 import toast from 'react-hot-toast';
 import { FileText, Save, Search } from 'lucide-react';
@@ -9,8 +11,11 @@ import { FileText, Save, Search } from 'lucide-react';
 const Adjustments = () => {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [locationStock, setLocationStock] = useState<number>(0);
+  const [loadingLocationStock, setLoadingLocationStock] = useState(false);
   const [formData, setFormData] = useState({
     product_id: '',
     location_id: '',
@@ -20,7 +25,29 @@ const Adjustments = () => {
 
   useEffect(() => {
     loadProducts();
+    loadLocations();
   }, []);
+
+  useEffect(() => {
+    if (formData.product_id && formData.location_id) {
+      loadLocationStock();
+    } else {
+      setLocationStock(0);
+    }
+  }, [formData.product_id, formData.location_id]);
+
+  const loadLocationStock = async () => {
+    setLoadingLocationStock(true);
+    try {
+      const data = await locationStockService.getProductLocationStock(formData.product_id);
+      const locationData = data.locations.find(loc => loc.location_id === formData.location_id);
+      setLocationStock(locationData?.quantity || 0);
+    } catch (error) {
+      setLocationStock(0);
+    } finally {
+      setLoadingLocationStock(false);
+    }
+  };
 
   const loadProducts = async () => {
     try {
@@ -28,6 +55,15 @@ const Adjustments = () => {
       setProducts(data);
     } catch (error) {
       toast.error('Failed to load products');
+    }
+  };
+
+  const loadLocations = async () => {
+    try {
+      const data = await warehouseService.getAllLocations();
+      setLocations(data);
+    } catch (error) {
+      toast.error('Failed to load locations');
     }
   };
 
@@ -53,13 +89,18 @@ const Adjustments = () => {
       return;
     }
 
+    if (!formData.location_id) {
+      toast.error('Please select a location');
+      return;
+    }
+
     setLoading(true);
 
     try {
       await stockMovementService.adjust({
         product_id: formData.product_id,
-        location_id: formData.location_id || undefined,
-        counted_quantity: formData.counted_quantity,
+        location_id: formData.location_id,
+        counted_quantity: Math.floor(formData.counted_quantity),
         notes: formData.notes,
       });
       toast.success('Inventory adjustment created successfully');
@@ -145,14 +186,22 @@ const Adjustments = () => {
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <p className="text-sm text-gray-600">Current Stock</p>
+                      <p className="text-sm text-gray-600">Total Stock (All Locations)</p>
                       <p className="text-xl font-bold text-gray-900">
                         {selectedProduct.current_stock} {selectedProduct.unit_of_measure}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Category</p>
-                      <p className="text-lg font-medium text-gray-900">{selectedProduct.category}</p>
+                      <p className="text-sm text-gray-600">Stock at Selected Location</p>
+                      <p className="text-xl font-bold text-blue-600">
+                        {loadingLocationStock ? (
+                          <span className="text-sm">Loading...</span>
+                        ) : formData.location_id ? (
+                          `${locationStock} ${selectedProduct.unit_of_measure}`
+                        ) : (
+                          <span className="text-sm text-gray-400">Select location</span>
+                        )}
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Reorder Level</p>
@@ -165,15 +214,21 @@ const Adjustments = () => {
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Location
+                    Location *
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={formData.location_id}
                     onChange={(e) => setFormData({ ...formData, location_id: e.target.value })}
+                    required
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Storage location"
-                  />
+                  >
+                    <option value="">Select location</option>
+                    {locations.map((location) => (
+                      <option key={location.id} value={location.id}>
+                        {location.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
@@ -183,10 +238,10 @@ const Adjustments = () => {
                   <input
                     type="number"
                     value={formData.counted_quantity}
-                    onChange={(e) => setFormData({ ...formData, counted_quantity: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) => setFormData({ ...formData, counted_quantity: parseInt(e.target.value) || 0 })}
                     required
                     min="0"
-                    step="0.01"
+                    step="1"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Physical count"
                   />
@@ -194,25 +249,25 @@ const Adjustments = () => {
               </div>
 
               {/* Difference Display */}
-              {selectedProduct && formData.counted_quantity !== 0 && (
+              {selectedProduct && formData.location_id && formData.counted_quantity !== 0 && (
                 <div className={`p-4 rounded-lg ${
-                  formData.counted_quantity > selectedProduct.current_stock
+                  formData.counted_quantity > locationStock
                     ? 'bg-green-50 border border-green-200'
-                    : formData.counted_quantity < selectedProduct.current_stock
+                    : formData.counted_quantity < locationStock
                     ? 'bg-red-50 border border-red-200'
                     : 'bg-gray-50 border border-gray-200'
                 }`}>
                   <p className="text-sm font-medium">
-                    Difference: {' '}
+                    Difference at {locations.find(l => l.id === formData.location_id)?.name}: {' '}
                     <span className={`text-lg ${
-                      formData.counted_quantity > selectedProduct.current_stock
+                      formData.counted_quantity > locationStock
                         ? 'text-green-700'
-                        : formData.counted_quantity < selectedProduct.current_stock
+                        : formData.counted_quantity < locationStock
                         ? 'text-red-700'
                         : 'text-gray-700'
                     }`}>
-                      {formData.counted_quantity - selectedProduct.current_stock > 0 ? '+' : ''}
-                      {(formData.counted_quantity - selectedProduct.current_stock).toFixed(2)} {selectedProduct.unit_of_measure}
+                      {formData.counted_quantity - locationStock > 0 ? '+' : ''}
+                      {(formData.counted_quantity - locationStock).toFixed(2)} {selectedProduct.unit_of_measure}
                     </span>
                   </p>
                 </div>

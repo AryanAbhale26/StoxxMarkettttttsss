@@ -35,6 +35,7 @@ class WarehouseUpdate(BaseModel):
 
 class WarehouseInDB(WarehouseBase):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    organization_id: str  # Multi-tenant support
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -61,6 +62,7 @@ class LocationCreate(LocationBase):
 
 class LocationInDB(LocationBase):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    organization_id: str  # Multi-tenant support
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     class Config:

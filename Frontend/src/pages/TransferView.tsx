@@ -45,6 +45,29 @@ const TransferView = () => {
     }
   };
 
+  const handleStatusChange = async (newStatus: 'draft' | 'waiting' | 'ready' | 'canceled') => {
+    if (!id) return;
+
+    const confirmMessages: any = {
+      ready: 'Mark this transfer as ready?',
+      waiting: 'Mark this transfer as waiting?',
+      canceled: 'Cancel this transfer? This action cannot be undone.',
+      draft: 'Change this transfer back to draft?',
+    };
+
+    if (!confirm(confirmMessages[newStatus])) {
+      return;
+    }
+
+    try {
+      await stockMovementService.update(id, { status: newStatus });
+      toast.success(`Transfer status changed to ${newStatus}`);
+      loadTransfer();
+    } catch (error) {
+      toast.error('Failed to update transfer status');
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const styles: any = {
       draft: 'bg-gray-100 text-gray-800',
@@ -114,13 +137,45 @@ const TransferView = () => {
                 <p className="text-gray-600 mt-1">Internal Stock Movement</p>
               </div>
             </div>
-            <div>
+            <div className="flex gap-2">
+              {transfer.status === 'draft' && (
+                <>
+                  <button
+                    onClick={() => handleStatusChange('waiting')}
+                    className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
+                  >
+                    Mark as Waiting
+                  </button>
+                  <button
+                    onClick={() => handleStatusChange('ready')}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Mark as Ready
+                  </button>
+                </>
+              )}
+              {transfer.status === 'waiting' && (
+                <button
+                  onClick={() => handleStatusChange('ready')}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Mark as Ready
+                </button>
+              )}
               {transfer.status === 'ready' && (
                 <button
                   onClick={handleExecute}
                   className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700"
                 >
                   Execute Transfer
+                </button>
+              )}
+              {(transfer.status === 'draft' || transfer.status === 'waiting' || transfer.status === 'ready') && (
+                <button
+                  onClick={() => handleStatusChange('canceled')}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                >
+                  Cancel
                 </button>
               )}
             </div>

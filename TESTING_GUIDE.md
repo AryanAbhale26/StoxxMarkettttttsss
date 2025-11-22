@@ -676,6 +676,65 @@
 
 ---
 
+## 16. Location-Wise Stock Tracking
+
+### A. View Product Stock by Location
+**Steps:**
+1. Navigate to `/location-stock`
+2. View all products with their stock distribution
+
+**Expected Results:**
+- ✅ Each product shows total stock
+- ✅ Shows breakdown by location with quantities
+- ✅ Progress bars show percentage in each location
+- ✅ Example: "Tomatoes - Total: 50 units"
+  - Location A: 20 units (40%)
+  - Location B: 30 units (60%)
+- ✅ Search filters products by name/SKU
+
+### B. View Location Inventory
+**Steps:**
+1. Navigate to `/location-inventory`
+2. View all locations with their products
+
+**Expected Results:**
+- ✅ Each location card shows warehouse name
+- ✅ Lists all products in that location with quantities
+- ✅ Shows total units in location
+- ✅ Shows total product types
+- ✅ Search filters by location/warehouse name
+
+### C. Test Location Tracking with Transfers
+**Steps:**
+1. Create product: Tomatoes, SKU: TOM-001, Stock: 0
+2. Create warehouse with 2 locations: Shelf A, Shelf B
+3. Create receipt: 50 Tomatoes to Shelf A, execute
+4. Go to Location Stock view
+5. Create internal transfer: 30 Tomatoes from Shelf A to Shelf B, execute
+6. Refresh Location Stock view
+
+**Expected Results:**
+- ✅ After receipt: Shelf A shows 50 units
+- ✅ After transfer: Shelf A shows 20 units, Shelf B shows 30 units
+- ✅ Total stock remains 50 units
+- ✅ Move history shows both movements
+- ✅ Location Inventory shows correct distribution
+
+### D. Test Location Tracking with Deliveries
+**Steps:**
+1. From previous test (20 in A, 30 in B)
+2. Create delivery: 15 Tomatoes from Shelf B
+3. Execute delivery
+4. Check Location Stock
+
+**Expected Results:**
+- ✅ Shelf A: 20 units (unchanged)
+- ✅ Shelf B: 15 units (reduced)
+- ✅ Total stock: 35 units
+- ✅ Location Inventory reflects changes
+
+---
+
 ## Common Issues & Troubleshooting
 
 ### Issue: "Invalid Date" in tables
@@ -767,6 +826,15 @@
 - [ ] Success toasts appear
 - [ ] Forms validate properly
 - [ ] Responsive on different screens
+
+### Location Tracking ✓
+- [ ] View product stock by location
+- [ ] View location inventory
+- [ ] Location distribution shows percentages
+- [ ] Internal transfers update locations correctly
+- [ ] Receipts add to destination location
+- [ ] Deliveries remove from source location
+- [ ] Total stock remains accurate
 
 ---
 

@@ -9,6 +9,8 @@ import {
   Repeat,
   FileText,
   Warehouse,
+  MapPin,
+  BarChart3,
   User,
   LogOut,
   History
@@ -32,6 +34,8 @@ const Layout = ({ children }: LayoutProps) => {
     { icon: FileText, label: 'Adjustments', path: '/adjustments' },
     { icon: History, label: 'Move History', path: '/history' },
     { icon: Warehouse, label: 'Warehouses', path: '/warehouses' },
+    { icon: MapPin, label: 'Location Stock', path: '/location-stock' },
+    { icon: BarChart3, label: 'Location Inventory', path: '/location-inventory' },
   ];
 
   const handleLogout = () => {

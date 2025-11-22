@@ -16,21 +16,35 @@ class DashboardService:
         from app.core.database import get_database
         return get_database()
     
-    async def get_dashboard_kpis(self) -> DashboardKPIs:
-        """Get dashboard KPIs"""
+    async def _get_user_org_id(self, user_email: str) -> str:
+        """Get organization_id for a user"""
+        user = await self.db.users.find_one({"email": user_email})
+        if not user or not user.get("organization_id"):
+            raise Exception("User organization not found")
+        return user["organization_id"]
+    
+    async def get_dashboard_kpis(self, user_email: str) -> DashboardKPIs:
+        """Get dashboard KPIs for user's organization"""
+        org_id = await self._get_user_org_id(user_email)
+        
         # Total products
-        total_products = await self.db.products.count_documents({})
+        total_products = await self.db.products.count_documents({"organization_id": org_id})
         
         # Low stock items (stock <= reorder level)
         low_stock_items = await self.db.products.count_documents({
+            "organization_id": org_id,
             "$expr": {"$lte": ["$current_stock", "$reorder_level"]}
         })
         
         # Out of stock items
-        out_of_stock_items = await self.db.products.count_documents({"current_stock": 0})
+        out_of_stock_items = await self.db.products.count_documents({
+            "organization_id": org_id,
+            "current_stock": 0
+        })
         
         # Total stock value (sum of all stock)
         pipeline = [
+            {"$match": {"organization_id": org_id}},
             {"$group": {"_id": None, "total": {"$sum": "$current_stock"}}}
         ]
         result = await self.db.products.aggregate(pipeline).to_list(1)
